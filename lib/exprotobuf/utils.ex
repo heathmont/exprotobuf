@@ -1,7 +1,7 @@
-defmodule Protobuf.Utils do
+defmodule ExProtobuf.Utils do
   @moduledoc false
-  alias Protobuf.OneOfField
-  alias Protobuf.Field
+  alias ExProtobuf.OneOfField
+  alias ExProtobuf.Field
 
   def define_algebraic_type([ast_item]) do
     ast_item

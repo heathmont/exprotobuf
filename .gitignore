@@ -7,3 +7,5 @@ erl_crash.dump
 /docs
 /tmp/
 /bench/snapshots/
+*.iml
+.idea/

@@ -1,11 +1,11 @@
-defmodule Protobuf.DefineMessage do
+defmodule ExProtobuf.DefineMessage do
   @moduledoc false
 
-  alias Protobuf.Decoder
-  alias Protobuf.Encoder
-  alias Protobuf.Field
-  alias Protobuf.OneOfField
-  alias Protobuf.Delimited
+  alias ExProtobuf.Decoder
+  alias ExProtobuf.Encoder
+  alias ExProtobuf.Field
+  alias ExProtobuf.OneOfField
+  alias ExProtobuf.Delimited
 
   def def_message(name, fields, [inject: inject, doc: doc, syntax: syntax]) when is_list(fields) do
     struct_fields = record_fields(fields)
@@ -28,7 +28,7 @@ defmodule Protobuf.DefineMessage do
         unquote(meta_information())
         unquote(constructors(name))
 
-        defimpl Protobuf.Serializable do
+        defimpl ExProtobuf.Serializable do
           def serialize(object), do: unquote(name).encode(object)
         end
       end
@@ -41,7 +41,7 @@ defmodule Protobuf.DefineMessage do
 
         defmodule unquote(name) do
           @moduledoc false
-          unquote(Protobuf.Config.doc_quote(doc))
+          unquote(ExProtobuf.Config.doc_quote(doc))
           @root root
           @record unquote(struct_fields)
           defstruct @record
@@ -62,7 +62,7 @@ defmodule Protobuf.DefineMessage do
             Module.eval_quoted(__MODULE__, use_in, [], __ENV__)
           end
 
-          defimpl Protobuf.Serializable do
+          defimpl ExProtobuf.Serializable do
             def serialize(object), do: unquote(name).encode(object)
           end
         end
@@ -87,41 +87,41 @@ defmodule Protobuf.DefineMessage do
       field_list
       |> Enum.map(fn
 
-        %Protobuf.Field{
+        %ExProtobuf.Field{
           name: field_name,
           occurrence: :required,
           type: type,
         } ->
           {field_name, define_field_typespec(type)}
 
-        %Protobuf.Field{
+        %ExProtobuf.Field{
           name: field_name,
           occurrence: :optional,
           type: type,
         } ->
           {field_name, quote do unquote(define_field_typespec(type)) | nil end}
 
-        %Protobuf.Field{
+        %ExProtobuf.Field{
           name: field_name,
           occurrence: :repeated,
           type: type,
         } ->
           {field_name, quote do [unquote(define_field_typespec(type))] end}
 
-        %Protobuf.OneOfField{
+        %ExProtobuf.OneOfField{
           name: field_name,
           fields: one_of_fields,
         } ->
           {
             field_name,
             one_of_fields
-            |> Enum.map(fn(%Protobuf.Field{name: name, type: type}) ->
+            |> Enum.map(fn(%ExProtobuf.Field{name: name, type: type}) ->
               quote do
                 {unquote(name), unquote(define_field_typespec(type))}
               end
             end)
             |> Enum.concat([nil])
-            |> Protobuf.Utils.define_algebraic_type
+            |> ExProtobuf.Utils.define_algebraic_type
           }
       end)
 
@@ -154,14 +154,14 @@ defmodule Protobuf.DefineMessage do
   defp define_oneof_modules(namespace, field_list) do
     field_list
     |> Enum.filter(fn
-      %Protobuf.OneOfField{} -> true
+      %ExProtobuf.OneOfField{} -> true
       %_{} -> false
     end)
     |> Enum.reduce(quote do end, &(define_oneof_instance_module(namespace, &1, &2)))
   end
 
   defp define_oneof_instance_module(namespace,
-                                    %Protobuf.OneOfField{
+                                    %ExProtobuf.OneOfField{
                                       name: field_name,
                                       fields: one_of_fields
                                     },
@@ -180,7 +180,7 @@ defmodule Protobuf.DefineMessage do
     end
   end
 
-  defp define_oneof_instance_macro(%Protobuf.Field{name: name}, ast_acc) do
+  defp define_oneof_instance_macro(%ExProtobuf.Field{name: name}, ast_acc) do
     quote do
       defmacro unquote(name)(expression_ast) do
         inner_name = unquote(name)
