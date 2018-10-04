@@ -1,4 +1,4 @@
-defmodule Protobuf.Field do
+defmodule ExProtobuf.Field do
   case Version.compare(System.version, "1.0.4") do
     :gt ->
       @record Record.Extractor.extract(:field, from: Path.join([Mix.Project.deps_path, "gpb", "include", "gpb.hrl"]))

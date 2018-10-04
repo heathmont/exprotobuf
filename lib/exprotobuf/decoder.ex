@@ -1,8 +1,8 @@
-defmodule Protobuf.Decoder do
+defmodule ExProtobuf.Decoder do
   use Bitwise, only_operators: true
-  alias Protobuf.Field
-  alias Protobuf.OneOfField
-  alias Protobuf.Utils
+  alias ExProtobuf.Field
+  alias ExProtobuf.OneOfField
+  alias ExProtobuf.Utils
 
   # Decode with record/module
   def decode(bytes, module) do
@@ -46,7 +46,7 @@ defmodule Protobuf.Decoder do
   end
   defp get_default(:proto3, field, module) do
     case module.defs(:field, field) do
-      %Protobuf.OneOfField{} -> nil
+      %ExProtobuf.OneOfField{} -> nil
       x ->
         case x.type do
           :string ->

@@ -1,8 +1,8 @@
-defmodule Protobuf.ConfigError do
+defmodule ExProtobuf.ConfigError do
   defexception [:message]
 end
 
-defmodule Protobuf.Config do
+defmodule ExProtobuf.Config do
   @moduledoc """
   Defines a struct used for configuring the parser behavior.
 
