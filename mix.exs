@@ -3,7 +3,7 @@ defmodule Protobuf.Mixfile do
 
   def project do
     [app: :exprotobuf,
-     version: "1.2.16",
+     version: "1.2.17",
      elixir: "~> 1.7",
      elixirc_paths: elixirc_paths(Mix.env),
      preferred_cli_env: [
@@ -35,9 +35,10 @@ defmodule Protobuf.Mixfile do
 
   defp package do
     [files: ["lib", "mix.exs", "README.md", "LICENSE", "priv"],
-     maintainers: ["Paul Schoenfelder"],
+     organization: "coingaming",
+     maintainers: ["Paul Schoenfelder", "Ilja Tkachuk"],
      licenses: ["Apache Version 2.0"],
-     links: %{"GitHub": "https://github.com/bitwalker/exprotobuf"} ]
+     links: %{"GitHub": "https://github.com/coingaming/exprotobuf/tree/coingaming"} ]
   end
 
   defp deps do
