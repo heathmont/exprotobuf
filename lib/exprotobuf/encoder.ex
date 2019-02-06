@@ -25,10 +25,10 @@ defmodule Protobuf.Encoder do
     msg
     |> Utils.walk(fn val, field_def, %{} = msg_defs ->
       val
+      |> Protobuf.PreEncodable.pre_encode()
       |> wrap_scalars_walker(field_def, msg_defs)
       |> fix_undefined_walker
       |> convert_to_record_walker
-      |> Protobuf.PreEncodable.pre_encode()
     end)
     |> :gpb.encode_msg(fixed_defs)
   end
