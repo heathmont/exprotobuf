@@ -30,6 +30,7 @@ defmodule Protobuf.Decoder do
     |> Utils.walk(fn val, field_def, %{} = msg_defs ->
       val
       |> unwrap_scalars_walker(field_def, msg_defs)
+      |> Protobuf.PostDecodable.post_decode()
     end)
   end
 

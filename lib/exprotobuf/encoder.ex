@@ -28,6 +28,7 @@ defmodule Protobuf.Encoder do
       |> wrap_scalars_walker(field_def, msg_defs)
       |> fix_undefined_walker
       |> convert_to_record_walker
+      |> Protobuf.PreEncodable.pre_encode()
     end)
     |> :gpb.encode_msg(fixed_defs)
   end

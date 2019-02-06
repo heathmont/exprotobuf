@@ -2,23 +2,24 @@ defmodule Protobuf.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :exprotobuf,
-     version: "1.2.16",
-     elixir: "~> 1.7",
-     elixirc_paths: elixirc_paths(Mix.env),
-     preferred_cli_env: [
-       bench: :bench,
-     ],
-     description: description(),
-     package: package(),
-     build_embedded: Mix.env == :prod,
-     start_permanent: Mix.env == :prod,
-     consolidate_protocols: Mix.env == :prod,
-     deps: deps(),
-     dialyzer: [
-       plt_add_deps: :transitive,
-       ignore_warnings: ".dialyzer.ignore-warnings"
-     ]
+    [
+      app: :exprotobuf,
+      version: "1.2.16",
+      elixir: "~> 1.7",
+      elixirc_paths: elixirc_paths(Mix.env()),
+      preferred_cli_env: [
+        bench: :bench
+      ],
+      description: description(),
+      package: package(),
+      build_embedded: Mix.env() == :prod,
+      start_permanent: Mix.env() == :prod,
+      consolidate_protocols: Mix.env() in [:prod, :bench],
+      deps: deps(),
+      dialyzer: [
+        plt_add_deps: :transitive,
+        ignore_warnings: ".dialyzer.ignore-warnings"
+      ]
     ]
   end
 
@@ -34,10 +35,12 @@ defmodule Protobuf.Mixfile do
   end
 
   defp package do
-    [files: ["lib", "mix.exs", "README.md", "LICENSE", "priv"],
-     maintainers: ["Paul Schoenfelder"],
-     licenses: ["Apache Version 2.0"],
-     links: %{"GitHub": "https://github.com/bitwalker/exprotobuf"} ]
+    [
+      files: ["lib", "mix.exs", "README.md", "LICENSE", "priv"],
+      maintainers: ["Paul Schoenfelder"],
+      licenses: ["Apache Version 2.0"],
+      links: %{GitHub: "https://github.com/bitwalker/exprotobuf"}
+    ]
   end
 
   defp deps do
