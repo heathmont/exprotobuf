@@ -1,41 +1,55 @@
 defmodule Exprotobuf.EncodeDecodeBench do
   use Benchfella
-  alias Exprotobuf.Bench.Proto.Wrappers.Msg
+  alias Exprotobuf.Bench.Proto.Recursive.Msg
+  alias Exprotobuf.Bench.Proto.Helper
 
-  @msg %Msg{
-    double_scalar: 0.0,
-    float_scalar: 0.0,
-    int64_scalar: 0,
-    uint64_scalar: 0,
-    int32_scalar: 0,
-    uint32_scalar: 0,
-    bool_scalar: false,
-    string_scalar: "",
-    bytes_scalar: "",
-    os_scalar: :LINUX,
-    double_value: nil,
-    float_value: nil,
-    int64_value: nil,
-    uint64_value: nil,
-    int32_value: nil,
-    uint32_value: nil,
-    bool_value: nil,
-    string_value: nil,
-    bytes_value: nil,
-    os_value: nil,
-    oneof_payload: nil
-  }
+  @msg0 Helper.msg(0)
+  @msg10 Helper.msg(10)
+  @msg50 Helper.msg(50)
+  @msg100 Helper.msg(100)
 
-  @encoded_msg @msg
-               |> Msg.encode()
+  @encoded_msg0 Helper.msg(0) |> Msg.encode()
+  @encoded_msg10 Helper.msg(10) |> Msg.encode()
+  @encoded_msg50 Helper.msg(50) |> Msg.encode()
+  @encoded_msg100 Helper.msg(100) |> Msg.encode()
 
-  bench "encode" do
-    @msg
+  bench "encode 0" do
+    @msg0
     |> Msg.encode()
   end
 
-  bench "decode" do
-    @encoded_msg
+  bench "encode 10" do
+    @msg10
+    |> Msg.encode()
+  end
+
+  bench "encode 50" do
+    @msg50
+    |> Msg.encode()
+  end
+
+  bench "encode 100" do
+    @msg100
+    |> Msg.encode()
+  end
+
+  bench "decode 0" do
+    @encoded_msg0
+    |> Msg.decode()
+  end
+
+  bench "decode 10" do
+    @encoded_msg10
+    |> Msg.decode()
+  end
+
+  bench "decode 50" do
+    @encoded_msg50
+    |> Msg.decode()
+  end
+
+  bench "decode 100" do
+    @encoded_msg100
     |> Msg.decode()
   end
 end
