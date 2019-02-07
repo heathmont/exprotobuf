@@ -9,13 +9,18 @@ defmodule Protobuf.CustomHooksTest.Schema do
   syntax = "proto3";
 
   message Msg {
-    string hello = 1;
-    Decimal world = 2;
+    Decimal hello  = 1;
+    UDecimal world = 2;
 
     message Decimal {
       bool negative = 1;
       uint64 coef   = 2;
       int32 exp     = 3;
+    }
+
+    message UDecimal {
+      uint64 coef = 1;
+      int32 exp   = 2;
     }
   }
   """
@@ -27,7 +32,7 @@ defmodule Protobuf.CustomHooksTest do
   alias Protobuf.CustomHooksTest.Schema
 
   defimpl Protobuf.PreEncodable, for: Decimal do
-    def pre_encode(%Decimal{sign: sign, coef: coef, exp: exp})
+    def pre_encode(%Decimal{sign: sign, coef: coef, exp: exp}, Schema.Msg.Decimal)
         when sign in [1, -1] and is_integer(coef) and coef >= 0 and is_integer(exp) do
       negative =
         sign
@@ -38,6 +43,14 @@ defmodule Protobuf.CustomHooksTest do
 
       %Schema.Msg.Decimal{
         negative: negative,
+        coef: coef,
+        exp: exp
+      }
+    end
+
+    def pre_encode(%Decimal{sign: 1, coef: coef, exp: exp}, Schema.Msg.UDecimal)
+        when is_integer(coef) and coef >= 0 and is_integer(exp) do
+      %Schema.Msg.UDecimal{
         coef: coef,
         exp: exp
       }
@@ -61,10 +74,24 @@ defmodule Protobuf.CustomHooksTest do
     end
   end
 
+  defimpl Protobuf.PostDecodable, for: Schema.Msg.UDecimal do
+    def post_decode(%Schema.Msg.UDecimal{coef: coef, exp: exp}) do
+      %Decimal{
+        sign: 1,
+        coef: coef,
+        exp: exp
+      }
+    end
+  end
+
   @msg %Schema.Msg{
-    hello: "hello",
-    world: %Decimal{
+    hello: %Decimal{
       sign: -1,
+      coef: 123,
+      exp: -3
+    },
+    world: %Decimal{
+      sign: 1,
       coef: 123,
       exp: -3
     }

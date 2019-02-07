@@ -27,7 +27,7 @@ defmodule Protobuf.Decoder do
     :gpb.decode_msg(bytes, module, defs)
     |> Utils.convert_from_record(module)
     |> convert_fields
-    |> Utils.walk(fn val, field_def, %{} = msg_defs ->
+    |> Utils.walk(fn val, field_def, %{} = msg_defs, _ ->
       val
       |> unwrap_scalars_walker(field_def, msg_defs)
       |> Protobuf.PostDecodable.post_decode()

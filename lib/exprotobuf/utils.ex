@@ -17,7 +17,7 @@ defmodule Protobuf.Utils do
   }
 
   @type msg_defs :: %{module => MsgDef.t()}
-  @type walker :: (term, Field.t() | OneOfField.t() | nil, msg_defs -> term)
+  @type walker :: (term, Field.t() | OneOfField.t() | nil, msg_defs, module | nil -> term)
 
   defmacro is_scalar(v) do
     quote do
@@ -126,8 +126,8 @@ defmodule Protobuf.Utils do
   applies given `Protobuf.Utils.walker` function to every node
   """
   @spec walk(term(), walker) :: term
-  def walk(%msg_module{} = msg, walker) when is_function(walker, 3) do
-    walk(msg, walker, msg_defs(msg_module.defs))
+  def walk(%msg_module{} = msg, walker) when is_function(walker, 4) do
+    walk(msg, walker, msg_defs(msg_module.defs), nil)
   end
 
   @doc """
@@ -135,11 +135,9 @@ defmodule Protobuf.Utils do
   applies given `Protobuf.Utils.walker` function to nodes
   according given `Protobuf.Utils.msg_defs` schema
   """
-  @spec walk(term(), walker, msg_defs) :: term
-  def walk(msg, walker, msg_defs, original_msg_module \\ nil)
-
+  @spec walk(term(), walker, msg_defs, module | nil) :: term
   def walk(%msg_module{} = msg, walker, %{} = msg_defs, original_msg_module)
-      when is_function(walker, 3) and
+      when is_function(walker, 4) and
              (msg_module == original_msg_module or is_nil(original_msg_module)) do
     msg
     |> Map.from_struct()
@@ -175,7 +173,8 @@ defmodule Protobuf.Utils do
             walker.(
               new_val,
               field_def,
-              msg_defs
+              msg_defs,
+              original_field_module
             )
           }
         )
@@ -212,17 +211,18 @@ defmodule Protobuf.Utils do
           walker.(
             new_val,
             field_def,
-            msg_defs
+            msg_defs,
+            original_field_module
           )
         )
     end)
-    |> walker.(nil, msg_defs)
+    |> walker.(nil, msg_defs, original_msg_module)
   end
 
   def walk(%_{} = val, walker, %{} = msg_defs, original_field_module)
-      when is_function(walker, 3) and is_atom(original_field_module) do
+      when is_function(walker, 4) and is_atom(original_field_module) do
     val
-    |> walker.(nil, msg_defs)
+    |> walker.(nil, msg_defs, original_field_module)
     |> case do
       %msg_module{} = new_val when msg_module == original_field_module ->
         new_val
@@ -234,7 +234,7 @@ defmodule Protobuf.Utils do
   end
 
   def walk(val, walker, %{}, original_field_module)
-      when is_function(walker, 3) and is_atom(original_field_module) do
+      when is_function(walker, 4) and is_atom(original_field_module) do
     val
   end
 
