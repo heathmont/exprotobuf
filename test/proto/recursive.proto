@@ -1,0 +1,11 @@
+syntax = "proto3";
+package Recursive;
+
+message Msg {
+  string hello = 1;
+
+  oneof either {
+      string world = 2;
+      Msg msg = 3;
+  }
+}

@@ -6,6 +6,7 @@ defmodule Protobuf.Field do
       @record Record.Extractor.extract(:"?gpb_field", from: Path.join([Mix.Project.deps_path, "gpb", "include", "gpb.hrl"]))
   end
   defstruct @record
+  @type t :: %__MODULE__{}
 
   def record, do: @record
 end
