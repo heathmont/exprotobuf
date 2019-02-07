@@ -23,9 +23,9 @@ defmodule Protobuf.Encoder do
       end
 
     msg
-    |> Utils.walk(fn val, field_def, %{} = msg_defs ->
+    |> Utils.walk(fn val, field_def, %{} = msg_defs, original_module ->
       val
-      |> Protobuf.PreEncodable.pre_encode()
+      |> Protobuf.PreEncodable.pre_encode(original_module)
       |> wrap_scalars_walker(field_def, msg_defs)
       |> fix_undefined_walker
       |> convert_to_record_walker
