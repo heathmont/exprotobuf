@@ -16,6 +16,9 @@ defmodule Protobuf.Utils do
     "Google.Protobuf.BytesValue" => true
   }
 
+  @type msg_defs :: %{module => MsgDef.t()}
+  @type walker :: (term, Field.t() | OneOfField.t() | nil, msg_defs -> term)
+
   defmacro is_scalar(v) do
     quote do
       (is_atom(unquote(v)) and unquote(v) != nil) or
@@ -62,18 +65,20 @@ defmodule Protobuf.Utils do
     |> List.to_tuple()
   end
 
+  @spec msg_defs([]) :: msg_defs
   def msg_defs(defs) when is_list(defs) do
     defs
     |> Enum.reduce(%{}, fn
       {{:msg, module}, meta}, %{} = acc ->
-        Map.put(acc, module, do_msg_defs(meta))
+        Map.put(acc, module, do_msg_def(meta))
 
       {{type, _}, _}, acc = %{} when type in [:enum, :extensions, :service, :group] ->
         acc
     end)
   end
 
-  defp do_msg_defs(defs) when is_list(defs) do
+  @spec do_msg_def([]) :: MsgDef.t()
+  defp do_msg_def(defs) when is_list(defs) do
     defs
     |> Enum.reduce(%MsgDef{}, fn
       %Field{name: field_name} = field_meta, %MsgDef{fields: %{} = acc_fields} = acc ->
@@ -116,26 +121,50 @@ defmodule Protobuf.Utils do
     end)
   end
 
-  #
-  # walker = fn(value, %_{} = field_def, %{} = msg_defs) -> ... end
-  #
-  # field_def :: %Field{} | %OneOfField{} | nil
-  #
+  @doc """
+  Performs traversal of given Elixir protobuf structure,
+  applies given `Protobuf.Utils.walker` function to every node
+  """
+  @spec walk(term(), walker) :: term
   def walk(%msg_module{} = msg, walker) when is_function(walker, 3) do
     walk(msg, walker, msg_defs(msg_module.defs))
   end
 
-  def walk(%msg_module{} = msg, walker, %{} = msg_defs)
-      when is_function(walker, 3) do
+  @doc """
+  Performs traversal of given Elixir term,
+  applies given `Protobuf.Utils.walker` function to nodes
+  according given `Protobuf.Utils.msg_defs` schema
+  """
+  @spec walk(term(), walker, msg_defs) :: term
+  def walk(msg, walker, msg_defs, original_msg_module \\ nil)
+
+  def walk(%msg_module{} = msg, walker, %{} = msg_defs, original_msg_module)
+      when is_function(walker, 3) and
+             (msg_module == original_msg_module or is_nil(original_msg_module)) do
     msg
     |> Map.from_struct()
     |> Enum.reduce(msg, fn
       {key, {oneof, val}}, %_{} = acc when is_atom(oneof) ->
+        {original_field_module, field_def} = fetch_field_def(msg_defs, msg_module, key, oneof)
+
         new_val =
           val
           |> case do
-            %_{} -> walk(val, walker, msg_defs)
-            _ when is_scalar(val) or is_nil(val) -> walk(val, walker, msg_defs)
+            %_{} ->
+              walk(val, walker, msg_defs, original_field_module)
+
+            %{} ->
+              val
+              |> Enum.map(fn
+                {k, v} ->
+                  {
+                    walk(k, walker, msg_defs, original_field_module),
+                    walk(v, walker, msg_defs, original_field_module)
+                  }
+              end)
+
+            _ when is_scalar(val) or is_nil(val) ->
+              walk(val, walker, msg_defs, original_field_module)
           end
 
         Map.put(
@@ -145,34 +174,36 @@ defmodule Protobuf.Utils do
             oneof,
             walker.(
               new_val,
-              fetch_field_def(msg_defs, msg_module, key, oneof),
+              field_def,
               msg_defs
             )
           }
         )
 
       {key, val}, %_{} = acc ->
+        {original_field_module, field_def} = fetch_field_def(msg_defs, msg_module, key)
+
         new_val =
           val
           |> case do
             %_{} ->
-              walk(val, walker, msg_defs)
+              walk(val, walker, msg_defs, original_field_module)
 
             _ when is_list(val) or is_map(val) ->
               val
               |> Enum.map(fn
                 {k, v} ->
                   {
-                    walk(k, walker, msg_defs),
-                    walk(v, walker, msg_defs)
+                    walk(k, walker, msg_defs, original_field_module),
+                    walk(v, walker, msg_defs, original_field_module)
                   }
 
                 v ->
-                  walk(v, walker, msg_defs)
+                  walk(v, walker, msg_defs, original_field_module)
               end)
 
             _ when is_scalar(val) or is_nil(val) ->
-              walk(val, walker, msg_defs)
+              walk(val, walker, msg_defs, original_field_module)
           end
 
         Map.put(
@@ -180,7 +211,7 @@ defmodule Protobuf.Utils do
           key,
           walker.(
             new_val,
-            fetch_field_def(msg_defs, msg_module, key),
+            field_def,
             msg_defs
           )
         )
@@ -188,8 +219,26 @@ defmodule Protobuf.Utils do
     |> walker.(nil, msg_defs)
   end
 
-  def walk(val, walker, %{}) when is_function(walker, 3), do: val
+  def walk(%_{} = val, walker, %{} = msg_defs, original_field_module)
+      when is_function(walker, 3) and is_atom(original_field_module) do
+    val
+    |> walker.(nil, msg_defs)
+    |> case do
+      %msg_module{} = new_val when msg_module == original_field_module ->
+        new_val
+        |> walk(walker, msg_defs, original_field_module)
 
+      new_val ->
+        new_val
+    end
+  end
+
+  def walk(val, walker, %{}, original_field_module)
+      when is_function(walker, 3) and is_atom(original_field_module) do
+    val
+  end
+
+  @spec fetch_field_def(msg_defs, module, atom) :: {nil | module, Field.t() | OneOfField.t()}
   defp fetch_field_def(%{} = msg_defs, msg_module, key)
        when is_atom(msg_module) and is_atom(key) do
     msg_defs
@@ -197,11 +246,18 @@ defmodule Protobuf.Utils do
       %{
         ^msg_module => %MsgDef{
           fields: %{
-            ^key => %Field{} = field_def
+            ^key => %Field{type: field_type} = field_def
           }
         }
       } ->
-        field_def
+        field_type
+        |> case do
+          {:msg, original_msg_module} when is_atom(original_msg_module) ->
+            {original_msg_module, field_def}
+
+          _ ->
+            {nil, field_def}
+        end
 
       %{
         ^msg_module => %MsgDef{
@@ -210,10 +266,11 @@ defmodule Protobuf.Utils do
           }
         }
       } ->
-        oneof_field_def
+        {nil, oneof_field_def}
     end
   end
 
+  @spec fetch_field_def(msg_defs, module, atom, atom) :: {nil | module, Field.t()}
   defp fetch_field_def(%{} = msg_defs, msg_module, key, oneof)
        when is_atom(msg_module) and is_atom(key) and is_atom(oneof) do
     %{
@@ -221,13 +278,20 @@ defmodule Protobuf.Utils do
         oneof_fields: %{
           ^key => %OneOfField{
             fields: %{
-              ^oneof => %Field{} = field_def
+              ^oneof => %Field{type: field_type} = field_def
             }
           }
         }
       }
     } = msg_defs
 
-    field_def
+    field_type
+    |> case do
+      {:msg, original_msg_module} when is_atom(original_msg_module) ->
+        {original_msg_module, field_def}
+
+      _ ->
+        {nil, field_def}
+    end
   end
 end

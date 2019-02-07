@@ -165,6 +165,9 @@ defmodule Protobuf.Decoder do
 
       %MsgDef{} ->
         val
+
+      nil ->
+        val
     end
   end
 end
