@@ -1,5 +1,6 @@
 defmodule Protobuf.Encoder do
   require Protobuf.Utils, as: Utils
+  require Protobuf.Const, as: Const
   alias Protobuf.Field
   alias Protobuf.MsgDef
   alias Protobuf.OneOfField
@@ -26,11 +27,35 @@ defmodule Protobuf.Encoder do
     |> Utils.walk(fn val, field_def, %{} = msg_defs, original_module ->
       val
       |> Protobuf.PreEncodable.pre_encode(original_module)
+      |> overflow_limit_walker(field_def)
       |> wrap_scalars_walker(field_def, msg_defs)
       |> fix_undefined_walker
       |> convert_to_record_walker
     end)
     |> :gpb.encode_msg(fixed_defs)
+  end
+
+  [:int32, :int64, :uint32, :uint64]
+  |> Enum.each(fn type ->
+    defp overflow_limit_walker(val, %Field{type: unquote(type)} = field_def)
+         when is_integer(val) do
+      (val >= Const.unquote("min_#{type}" |> String.to_atom()) and
+         val <= Const.unquote("max_#{type}" |> String.to_atom()))
+      |> in_type_bounds(val, field_def)
+    end
+  end)
+
+  defp overflow_limit_walker(val, _) do
+    val
+  end
+
+  defp in_type_bounds(true, val, %Field{}) do
+    val
+  end
+
+  defp in_type_bounds(false, val, %Field{} = field_def) do
+    "can not encode value #{val} as field #{inspect(field_def)} because of type overflow"
+    |> raise
   end
 
   defp wrap_scalars_walker(val, %Field{} = field_def, %{} = msg_defs)
