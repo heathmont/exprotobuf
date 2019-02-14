@@ -50,10 +50,15 @@ defmodule Protobuf.ValidatorTest do
       repeated Msg repeated_msg = 36;
 
       map<string, string> map = 37;
+      EnumValue scalar_wrapper = 38;
 
       enum Enum {
         START = 0;
         STOP  = 1;
+      }
+
+      message EnumValue {
+        Enum value = 1;
       }
 
       message Msg {
@@ -84,6 +89,7 @@ defmodule Protobuf.ValidatorTest do
     bytes = <<255, 255, 255>>
     enum = :START
     map = %{"hello" => "world"}
+    scalar_wrapper = :START
 
     msg = %Proto3.Msg{
       key: "foo",
@@ -127,7 +133,8 @@ defmodule Protobuf.ValidatorTest do
         repeated_bytes: [bytes],
         repeated_enum: [enum],
         repeated_msg: [msg],
-        map: map
+        map: map,
+        scalar_wrapper: scalar_wrapper
       }
     }
   end
@@ -453,6 +460,36 @@ defmodule Protobuf.ValidatorTest do
     assert :ok = %Proto3{proto3 | map: [{"foo", "bar"}]} |> validate
     assert {:error, _} = %Proto3{proto3 | map: ["foo"]} |> validate
     assert {:error, _} = %Proto3{proto3 | map: "foo"} |> validate
+  end
+
+  test "proto3 scalar wrapper", %{proto3: %Proto3{} = proto3} do
+    import Proto3
+    assert :ok = %Proto3{proto3 | scalar_wrapper: nil} |> validate
+    assert :ok = %Proto3{proto3 | scalar_wrapper: nil} |> validate(allow_scalar_nil: true)
+    assert :ok = %Proto3{proto3 | scalar_wrapper: nil} |> validate(allow_scalar_nil: false)
+
+    assert {:error, _} =
+             %Proto3{proto3 | scalar_wrapper: %Proto3.EnumValue{value: nil}} |> validate
+
+    assert :ok =
+             %Proto3{proto3 | scalar_wrapper: %Proto3.EnumValue{value: nil}}
+             |> validate(allow_scalar_nil: true)
+
+    assert {:error, _} =
+             %Proto3{proto3 | scalar_wrapper: %Proto3.EnumValue{value: nil}}
+             |> validate(allow_scalar_nil: false)
+
+    assert {:error, _} = %Proto3{proto3 | scalar_wrapper: 0} |> validate
+    assert :ok = %Proto3{proto3 | scalar_wrapper: 0} |> validate(allow_enum_integer: true)
+
+    assert {:error, _} = %Proto3{proto3 | scalar_wrapper: %Proto3.EnumValue{value: 0}} |> validate
+
+    assert :ok =
+             %Proto3{proto3 | scalar_wrapper: %Proto3.EnumValue{value: 0}}
+             |> validate(allow_enum_integer: true)
+
+    assert {:error, _} =
+             %Proto3{proto3 | scalar_wrapper: %Proto3.EnumValue{value: :HELLO}} |> validate
   end
 
   #

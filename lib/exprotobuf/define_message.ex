@@ -283,6 +283,7 @@ defmodule Protobuf.DefineMessage do
     expected_amount_of_fields = length(fields)
     quote do
       require Protobuf.IntegerTypes, as: IntegerTypes
+      require Protobuf.Utils, as: Utils
       require Protobuf.ValidatorOpts, as: ValidatorOpts
 
       defmacro validate!(data, opts_data \\ []) do
@@ -306,7 +307,7 @@ defmodule Protobuf.DefineMessage do
         }
         quote do
           unquote(data)
-          |> unquote(__MODULE__).do_validate(unquote(opts))
+          |> unquote(__MODULE__).do_validate(%ValidatorOpts{unquote(opts) | msg_defs: Utils.msg_defs(unquote(__MODULE__).defs)})
         end
       end
 
@@ -490,6 +491,18 @@ defmodule Protobuf.DefineMessage do
       end
       defp validate_message_field(nil, %Field{occurrence: :optional} = field, %ValidatorOpts{}) do
         {:cont, :ok}
+      end
+      defp validate_message_field(val,
+                                  %Field{type: {:msg, msg_module}} = field,
+                                  %ValidatorOpts{msg_defs: %{} = msg_defs} = opts) when Utils.is_scalar(val) do
+        val
+        |> Protobuf.Encoder.wrap_scalars_walker(field, msg_defs)
+        |> case do
+          ^val ->
+            invalid_value(val, field)
+          %_{value: ^val} = wrapped_val when map_size(wrapped_val) == 2 ->
+            validate_message_field(wrapped_val, field, opts)
+        end
       end
       defp validate_message_field(val, %Field{type: {:msg, msg_module}}, %ValidatorOpts{} = opts) do
         val

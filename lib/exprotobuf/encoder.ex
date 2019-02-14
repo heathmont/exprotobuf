@@ -58,7 +58,7 @@ defmodule Protobuf.Encoder do
     |> raise
   end
 
-  defp wrap_scalars_walker(val, %Field{} = field_def, %{} = msg_defs)
+  def wrap_scalars_walker(val, %Field{} = field_def, %{} = msg_defs)
        when Utils.is_scalar(val) do
     field_def
     |> case do
@@ -78,7 +78,7 @@ defmodule Protobuf.Encoder do
     end
   end
 
-  defp wrap_scalars_walker(val, _, %{}) do
+  def wrap_scalars_walker(val, _, %{}) do
     val
   end
 
