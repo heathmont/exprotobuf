@@ -1,6 +1,6 @@
 defmodule Protobuf.Encoder do
   require Protobuf.Utils, as: Utils
-  require Protobuf.Const, as: Const
+  require Protobuf.IntegerTypes, as: IntegerTypes
   alias Protobuf.Field
   alias Protobuf.MsgDef
   alias Protobuf.OneOfField
@@ -39,8 +39,8 @@ defmodule Protobuf.Encoder do
   |> Enum.each(fn type ->
     defp overflow_limit_walker(val, %Field{type: unquote(type)} = field_def)
          when is_integer(val) do
-      (val >= Const.unquote("min_#{type}" |> String.to_atom()) and
-         val <= Const.unquote("max_#{type}" |> String.to_atom()))
+      (val >= IntegerTypes.unquote("min_#{type}" |> String.to_atom()) and
+         val <= IntegerTypes.unquote("max_#{type}" |> String.to_atom()))
       |> in_type_bounds(val, field_def)
     end
   end)
@@ -58,7 +58,7 @@ defmodule Protobuf.Encoder do
     |> raise
   end
 
-  defp wrap_scalars_walker(val, %Field{} = field_def, %{} = msg_defs)
+  def wrap_scalars_walker(val, %Field{} = field_def, %{} = msg_defs)
        when Utils.is_scalar(val) do
     field_def
     |> case do
@@ -78,7 +78,7 @@ defmodule Protobuf.Encoder do
     end
   end
 
-  defp wrap_scalars_walker(val, _, %{}) do
+  def wrap_scalars_walker(val, _, %{}) do
     val
   end
 
