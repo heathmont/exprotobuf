@@ -7,6 +7,8 @@ defmodule Protobuf.DefineMessage do
   alias Protobuf.OneOfField
   alias Protobuf.Delimited
   alias Protobuf.Utils
+  require Protobuf.IntegerTypes, as: IntegerTypes
+  require Protobuf.ValidatorOpts, as: ValidatorOpts
 
   def def_message(name, fields, [inject: inject, doc: doc, syntax: syntax]) when is_list(fields) do
     struct_fields = record_fields(fields)
@@ -28,6 +30,7 @@ defmodule Protobuf.DefineMessage do
         unquote(oneof_fields_methods(fields))
         unquote(meta_information())
         unquote(constructors(name))
+        unquote(validator(fields))
 
         defimpl Protobuf.Serializable do
           def serialize(object), do: unquote(name).encode(object)
@@ -58,6 +61,7 @@ defmodule Protobuf.DefineMessage do
           unquote(meta_information())
 
           unquote(constructors(name))
+          unquote(validator(fields))
 
           if use_in != nil do
             Module.eval_quoted(__MODULE__, use_in, [], __ENV__)
@@ -272,6 +276,252 @@ defmodule Protobuf.DefineMessage do
       def defs(:field, _),        do: nil
       def defs(:field, field, _), do: defs(:field, field)
       defoverridable [defs: 0]
+    end
+  end
+
+  defp validator(fields) when is_list(fields) do
+    expected_amount_of_fields = length(fields)
+    quote do
+      require Protobuf.IntegerTypes, as: IntegerTypes
+      require Protobuf.ValidatorOpts, as: ValidatorOpts
+
+      defmacro validate!(data, opts_data \\ []) do
+        quote do
+          unquote(data)
+          |> unquote(__MODULE__).validate(unquote(opts_data))
+          |> case do
+            :ok -> :ok
+            {:error, error} when is_binary(error) -> raise(error)
+          end
+        end
+      end
+      defmacro validate(data, opts_data \\ []) do
+        opts = {
+          :%,
+          [],
+          [
+            {:__aliases__, [alias: false], [:Protobuf, :ValidatorOpts]},
+            {:%{}, [], opts_data}
+          ]
+        }
+        quote do
+          unquote(data)
+          |> unquote(__MODULE__).do_validate(unquote(opts))
+        end
+      end
+
+      def do_validate(%__MODULE__{} = data, %ValidatorOpts{} = opts) do
+        %{} = data_map = Map.from_struct(data)
+        expected_amount_of_fields = unquote(expected_amount_of_fields)
+        data_map
+        |> map_size
+        |> case do
+          ^expected_amount_of_fields ->
+            unquote(fields |> Macro.escape)
+            |> Enum.reduce_while(:ok, fn
+              %Field{name: name} = field, :ok ->
+                data_map
+                |> Map.fetch(name)
+                |> case do
+                  {:ok, val} ->
+                    validate_field(val, field, opts)
+                  :error ->
+                    {:halt, {:error, "#{__MODULE__}.t should have field #{inspect name}"}}
+                end
+              %OneOfField{name: name} = oneof_field, :ok ->
+                data_map
+                |> Map.fetch(name)
+                |> case do
+                  {:ok, val} ->
+                    validate_oneof_field(val, oneof_field, opts)
+                  :error ->
+                    {:halt, {:error, "#{__MODULE__}.t should have field #{inspect name}"}}
+                end
+            end)
+          amount_of_fields ->
+            {:error, "#{__MODULE__}.t should have #{expected_amount_of_fields} fields, but it has #{amount_of_fields} fields"}
+        end
+      end
+      def do_validate(data, %ValidatorOpts{}) do
+        {:error, "#{__MODULE__}.t was expected but got #{inspect data}"}
+      end
+
+      defp validate_field(val, %Field{occurrence: occurrence} = field, %ValidatorOpts{} = opts) do
+        occurrence
+        |> case do
+          :repeated when is_list(val) ->
+            fixed_field = %Field{field | occurrence: :required}
+            val
+            |> Enum.reduce_while(:ok, fn v, :ok ->
+              validate_non_repeated_field(v, fixed_field, opts)
+            end)
+            |> case do
+              :ok -> {:cont, :ok}
+              {:error, _} = res -> {:halt, res}
+            end
+          :repeated ->
+            invalid_value(val, field)
+          :optional ->
+            validate_non_repeated_field(val, field, opts)
+          :required ->
+            validate_non_repeated_field(val, field, opts)
+        end
+      end
+
+      defp validate_non_repeated_field(val, %Field{occurrence: occurrence, type: type} = field, %ValidatorOpts{} = opts) do
+        fixed_opts =
+          opts
+          |> case do
+            %ValidatorOpts{allow_scalar_nil: true} when (occurrence == :required) ->
+              %ValidatorOpts{opts | allow_scalar_nil: false}
+            %ValidatorOpts{} when occurrence in [:optional, :required] ->
+              opts
+          end
+
+        type
+        |> case do
+          :double -> validate_scalar_field(val, field, fixed_opts)
+          :float -> validate_scalar_field(val, field, fixed_opts)
+          :int32 -> validate_scalar_field(val, field, fixed_opts)
+          :int64 -> validate_scalar_field(val, field, fixed_opts)
+          :uint32 -> validate_scalar_field(val, field, fixed_opts)
+          :uint64 -> validate_scalar_field(val, field, fixed_opts)
+          :sint32 -> validate_scalar_field(val, field, fixed_opts)
+          :sint64 -> validate_scalar_field(val, field, fixed_opts)
+          :fixed32 -> validate_scalar_field(val, field, fixed_opts)
+          :fixed64 -> validate_scalar_field(val, field, fixed_opts)
+          :sfixed32 -> validate_scalar_field(val, field, fixed_opts)
+          :sfixed64 -> validate_scalar_field(val, field, fixed_opts)
+          :bool -> validate_scalar_field(val, field, fixed_opts)
+          :string -> validate_scalar_field(val, field, fixed_opts)
+          :bytes -> validate_scalar_field(val, field, fixed_opts)
+          {:enum, _} -> validate_enum_field(val, field, fixed_opts)
+          {:msg, _} -> validate_message_field(val, field, opts)
+        end
+      end
+
+      defp validate_scalar_field(nil, %Field{} = field, %ValidatorOpts{allow_scalar_nil: true}) do
+        {:cont, :ok}
+      end
+      defp validate_scalar_field(nil, %Field{} = field, %ValidatorOpts{allow_scalar_nil: false}) do
+        {:halt, {:error, "#{__MODULE__}.t has nil value of field #{inspect field} where nil is not allowed"}}
+      end
+      defp validate_scalar_field(val, %Field{type: type} = field, %ValidatorOpts{}) do
+        type
+        |> case do
+          :double when is_float(val) -> {:cont, :ok}
+          :double -> invalid_value(val, field)
+
+          :float when is_float(val) -> {:cont, :ok}
+          :float -> invalid_value(val, field)
+
+          :int32 when IntegerTypes.is_int32(val) -> {:cont, :ok}
+          :int32 -> invalid_value(val, field)
+
+          :int64 when IntegerTypes.is_int64(val) -> {:cont, :ok}
+          :int64 -> invalid_value(val, field)
+
+          :uint32 when IntegerTypes.is_uint32(val) -> {:cont, :ok}
+          :uint32 -> invalid_value(val, field)
+
+          :uint64 when IntegerTypes.is_uint64(val) -> {:cont, :ok}
+          :uint64 -> invalid_value(val, field)
+
+          :sint32 when IntegerTypes.is_int32(val) -> {:cont, :ok}
+          :sint32 -> invalid_value(val, field)
+
+          :sint64 when IntegerTypes.is_int64(val) -> {:cont, :ok}
+          :sint64 -> invalid_value(val, field)
+
+          :fixed32 when IntegerTypes.is_uint32(val) -> {:cont, :ok}
+          :fixed32 -> invalid_value(val, field)
+
+          :fixed64 when IntegerTypes.is_uint64(val) -> {:cont, :ok}
+          :fixed64 -> invalid_value(val, field)
+
+          :sfixed32 when IntegerTypes.is_int32(val) -> {:cont, :ok}
+          :sfixed32 -> invalid_value(val, field)
+
+          :sfixed64 when IntegerTypes.is_int64(val) -> {:cont, :ok}
+          :sfixed64 -> invalid_value(val, field)
+
+          :bool when is_boolean(val) -> {:cont, :ok}
+          :bool -> invalid_value(val, field)
+
+          :string ->
+            val
+            |> String.valid?
+            |> case do
+              true -> {:cont, :ok}
+              false -> invalid_value(val, field)
+            end
+
+          :bytes when is_binary(val) -> {:cont, :ok}
+          :bytes -> invalid_value(val, field)
+        end
+      end
+
+      defp validate_enum_field(nil, %Field{} = field, %ValidatorOpts{allow_scalar_nil: true}) do
+        {:cont, :ok}
+      end
+      defp validate_enum_field(nil, %Field{} = field, %ValidatorOpts{allow_scalar_nil: false}) do
+        {:halt, {:error, "#{__MODULE__}.t has nil value of field #{inspect field} where nil is not allowed"}}
+      end
+      defp validate_enum_field(val, %Field{} = field, %ValidatorOpts{allow_enum_integer: true}) when IntegerTypes.is_int32(val) do
+        {:cont, :ok}
+      end
+      defp validate_enum_field(val, %Field{} = field, %ValidatorOpts{allow_enum_integer: false}) when IntegerTypes.is_int32(val) do
+        {:halt, {:error, "#{__MODULE__}.t has #{val} value of enum field #{inspect field} where int32 is not allowed"}}
+      end
+      defp validate_enum_field(val, %Field{type: {:enum, enum_module}} = field, %ValidatorOpts{}) do
+        enum_module.atoms
+        |> Enum.member?(val)
+        |> case do
+          true -> {:cont, :ok}
+          false -> invalid_value(val, field)
+        end
+      end
+
+      defp validate_message_field(nil, %Field{occurrence: :required} = field, %ValidatorOpts{}) do
+        {:halt, {:error, "#{__MODULE__}.t has nil value of field #{inspect field} where nil is not allowed"}}
+      end
+      defp validate_message_field(nil, %Field{occurrence: :optional} = field, %ValidatorOpts{}) do
+        {:cont, :ok}
+      end
+      defp validate_message_field(val, %Field{type: {:msg, msg_module}}, %ValidatorOpts{} = opts) do
+        val
+        |> Protobuf.PreEncodable.pre_encode(msg_module)
+        |> msg_module.do_validate(opts)
+        |> case do
+          :ok -> {:cont, :ok}
+          {:error, _} = error -> {:halt, error}
+        end
+      end
+
+      defp validate_oneof_field(nil, %OneOfField{}, %ValidatorOpts{}) do
+        {:cont, :ok}
+      end
+      defp validate_oneof_field({_, nil} = val, %OneOfField{} = oneof_field, %ValidatorOpts{}) do
+        invalid_value(val, oneof_field)
+      end
+      defp validate_oneof_field({field_name, field_val} = val, %OneOfField{fields: fields} = oneof_field, %ValidatorOpts{} = opts) do
+        fields
+        |> Enum.filter(fn %Field{name: x} -> x == field_name end)
+        |> case do
+          [] -> invalid_value(val, oneof_field)
+          [%Field{} = field] -> validate_non_repeated_field(field_val, field, opts)
+        end
+      end
+      defp validate_oneof_field(val, %OneOfField{} = oneof_field, %ValidatorOpts{}) do
+        invalid_value(val, oneof_field)
+      end
+
+      defp invalid_value(val, %Field{} = field) do
+        {:halt, {:error, "#{__MODULE__}.t has invalid value #{inspect val} of field #{inspect field}"}}
+      end
+      defp invalid_value(val, %OneOfField{} = field) do
+        {:halt, {:error, "#{__MODULE__}.t has invalid value #{inspect val} of field #{inspect field}"}}
+      end
     end
   end
 

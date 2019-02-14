@@ -12,7 +12,7 @@ defmodule Protobuf.OverflowTest do
   end
 
   use Protobuf.Case
-  require Protobuf.Const, as: Const
+  require Protobuf.IntegerTypes, as: IntegerTypes
   alias Schema.Msg
 
   [:int32, :int64, :uint32, :uint64]
@@ -30,13 +30,13 @@ defmodule Protobuf.OverflowTest do
 
     {max, []} =
       quote do
-        Const.unquote("max_#{type}" |> String.to_atom())
+        IntegerTypes.unquote("max_#{type}" |> String.to_atom())
       end
       |> Code.eval_quoted([], __ENV__)
 
     {min, []} =
       quote do
-        Const.unquote("min_#{type}" |> String.to_atom())
+        IntegerTypes.unquote("min_#{type}" |> String.to_atom())
       end
       |> Code.eval_quoted([], __ENV__)
 
