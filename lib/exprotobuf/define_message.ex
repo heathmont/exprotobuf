@@ -346,6 +346,9 @@ defmodule Protobuf.DefineMessage do
         {:error, "#{__MODULE__}.t was expected but got #{inspect data}"}
       end
 
+      defp validate_field(val, %Field{type: {:map, _, _}} = field, %ValidatorOpts{} = opts) do
+        validate_map_field(val, field, opts)
+      end
       defp validate_field(val, %Field{occurrence: occurrence} = field, %ValidatorOpts{} = opts) do
         occurrence
         |> case do
@@ -496,6 +499,53 @@ defmodule Protobuf.DefineMessage do
           :ok -> {:cont, :ok}
           {:error, _} = error -> {:halt, error}
         end
+      end
+
+      defp validate_map_field(%_{} = val, %Field{} = field, %ValidatorOpts{}) do
+        invalid_value(val, field)
+      end
+      defp validate_map_field(%{} = val, %Field{} = field, %ValidatorOpts{} = opts) do
+        val
+        |> Enum.to_list
+        |> validate_map_field(field, opts)
+      end
+      defp validate_map_field([_ | _] = val, %Field{type: {:map, tk, tv}} = field, opts) do
+        field_key = %Protobuf.Field{
+          fnum: 1,
+          name: :key,
+          occurrence: :required,
+          opts: [],
+          rnum: 1,
+          type: tk
+        }
+
+        field_value = %Protobuf.Field{
+          fnum: 1,
+          name: :value,
+          occurrence: :required,
+          opts: [],
+          rnum: 1,
+          type: tv
+        }
+
+        val
+        |> Enum.reduce_while(:ok, fn
+          {k, v}, :ok ->
+            validate_field(k, field_key, opts)
+            |> case do
+              {:cont, :ok} -> validate_field(v, field_value, opts)
+              {:halt, {:error, _}} = error -> error
+            end
+          some, :ok ->
+            {:halt, {:error, "invalid map element #{inspect some}"}}
+        end)
+        |> case do
+          :ok -> {:cont, :ok}
+          {:error, _} -> invalid_value(val, field)
+        end
+      end
+      defp validate_map_field(val, %Field{} = field, %ValidatorOpts{}) do
+        invalid_value(val, field)
       end
 
       defp validate_oneof_field(nil, %OneOfField{}, %ValidatorOpts{}) do

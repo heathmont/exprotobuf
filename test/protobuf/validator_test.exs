@@ -49,6 +49,8 @@ defmodule Protobuf.ValidatorTest do
       repeated Enum repeated_enum = 35;
       repeated Msg repeated_msg = 36;
 
+      map<string, string> map = 37;
+
       enum Enum {
         START = 0;
         STOP  = 1;
@@ -81,6 +83,7 @@ defmodule Protobuf.ValidatorTest do
     string = "hello"
     bytes = <<255, 255, 255>>
     enum = :START
+    map = %{"hello" => "world"}
 
     msg = %Proto3.Msg{
       key: "foo",
@@ -123,7 +126,8 @@ defmodule Protobuf.ValidatorTest do
         repeated_string: [string],
         repeated_bytes: [bytes],
         repeated_enum: [enum],
-        repeated_msg: [msg]
+        repeated_msg: [msg],
+        map: map
       }
     }
   end
@@ -437,6 +441,18 @@ defmodule Protobuf.ValidatorTest do
 
     assert {:error, _} =
              %Proto3{proto3 | either: {:either_msg, %Proto3.Msg{msg | key: 123}}} |> validate
+  end
+
+  test "proto3 map", %{proto3: %Proto3{map: %{} = map} = proto3} do
+    import Proto3
+    assert {:error, _} = %Proto3{proto3 | map: Map.put(map, "foo", 123)} |> validate
+    assert {:error, _} = %Proto3{proto3 | map: Map.put(map, 123, "foo")} |> validate
+    assert :ok = %Proto3{proto3 | map: Map.put(map, "foo", "bar")} |> validate
+    assert {:error, _} = %Proto3{proto3 | map: [{"foo", 123}]} |> validate
+    assert {:error, _} = %Proto3{proto3 | map: [{123, "bar"}]} |> validate
+    assert :ok = %Proto3{proto3 | map: [{"foo", "bar"}]} |> validate
+    assert {:error, _} = %Proto3{proto3 | map: ["foo"]} |> validate
+    assert {:error, _} = %Proto3{proto3 | map: "foo"} |> validate
   end
 
   #
