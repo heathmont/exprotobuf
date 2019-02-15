@@ -65,7 +65,7 @@ defmodule Protobuf.Utils do
     |> List.to_tuple()
   end
 
-  @spec msg_defs([]) :: msg_defs
+  @spec msg_defs(list) :: msg_defs
   def msg_defs(defs) when is_list(defs) do
     defs
     |> Enum.reduce(%{}, fn
