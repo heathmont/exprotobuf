@@ -4,7 +4,7 @@ defmodule Protobuf.Mixfile do
   def project do
     [
       app: :exprotobuf,
-      version: "1.2.22",
+      version: "1.2.23",
       elixir: "~> 1.7",
       elixirc_paths: elixirc_paths(Mix.env()),
       preferred_cli_env: [
@@ -46,7 +46,7 @@ defmodule Protobuf.Mixfile do
 
   defp deps do
     [
-      {:gpb, "~> 4.0"},
+      {:gpb, "~> 4.6.0"},
       {:ex_doc, "~> 0.19", only: :dev},
       {:dialyxir, "~> 0.5", only: :dev},
       {:benchfella, "~> 0.3.0", only: :bench, runtime: false}
