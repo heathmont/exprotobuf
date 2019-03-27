@@ -133,8 +133,18 @@ defmodule Protobuf.DefineMessage do
       :%,
       [],
       [
-        {:__MODULE__, [], Elixir},
-        {:%{}, [], field_types}
+        {
+          :__aliases__,
+          [alias: false],
+          module
+          |> Module.split
+          |> Enum.map(&String.to_atom/1)
+        },
+        {
+          :%{},
+          [],
+          field_types
+        }
       ]
     }
     type_ast =
