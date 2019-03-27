@@ -129,21 +129,28 @@ defmodule Protobuf.DefineMessage do
 
   defp define_trivial_typespec(module, fields) when is_atom(module) and (module != nil) and is_list(fields) do
     field_types = define_trivial_typespec_fields(fields, [])
+    default_type_ast = {
+      :%,
+      [],
+      [
+        {:__MODULE__, [], Elixir},
+        {:%{}, [], field_types}
+      ]
+    }
     type_ast =
-      %{__struct__: module}
-      |> Protobuf.PostDecodable.post_decoded_type
+      Protobuf.PostDecodable
+      |> Module.concat(module)
+      |> Code.ensure_loaded?
       |> case do
-        nil ->
-          {
-            :%,
-            [],
-            [
-              {:__MODULE__, [], Elixir},
-              {:%{}, [], field_types}
-            ]
-          }
-        ast ->
-          ast
+        true ->
+          %{__struct__: module}
+          |> Protobuf.PostDecodable.post_decoded_type
+          |> case do
+            nil -> default_type_ast
+            ast -> ast
+          end
+        false ->
+          default_type_ast
       end
     quote do
       @type t() :: unquote(type_ast)
