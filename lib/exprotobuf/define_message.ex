@@ -86,7 +86,7 @@ defmodule Protobuf.DefineMessage do
     end
   end
 
-  defp define_typespec(module, field_list) when is_list(field_list) do
+  def define_typespec(module, field_list) when is_list(field_list) do
     case field_list do
       [%Field{name: :value, type: scalar, occurrence: occurrence}] when is_atom(scalar) ->
         scalar_wrapper? = Utils.is_standard_scalar_wrapper(module)
@@ -102,7 +102,7 @@ defmodule Protobuf.DefineMessage do
             end
 
           not(scalar_wrapper?) ->
-            define_trivial_typespec(field_list)
+            define_trivial_typespec(module, field_list)
         end
 
       [%Field{name: :value, type: {:enum, enum_module}, occurrence: occurrence}] when is_atom(enum_module) ->
@@ -119,26 +119,51 @@ defmodule Protobuf.DefineMessage do
             end
 
           not(enum_wrapper?) ->
-            define_trivial_typespec(field_list)
+            define_trivial_typespec(module, field_list)
         end
 
       _ ->
-        define_trivial_typespec(field_list)
+        define_trivial_typespec(module, field_list)
     end
   end
 
-  defp define_trivial_typespec(fields) when is_list(fields) do
+  defp define_trivial_typespec(module, fields) when is_atom(module) and (module != nil) and is_list(fields) do
     field_types = define_trivial_typespec_fields(fields, [])
-    type_struct = {
+    default_type_ast = {
       :%,
       [],
       [
-        {:__MODULE__, [], Elixir},
-        {:%{}, [], field_types}
+        {
+          :__aliases__,
+          [alias: false],
+          module
+          |> Module.split
+          |> Enum.map(&String.to_atom/1)
+        },
+        {
+          :%{},
+          [],
+          field_types
+        }
       ]
     }
+    type_ast =
+      Protobuf.PostDecodable
+      |> Module.concat(module)
+      |> Code.ensure_loaded?
+      |> case do
+        true ->
+          %{__struct__: module}
+          |> Protobuf.PostDecodable.post_decoded_type
+          |> case do
+            nil -> default_type_ast
+            ast -> ast
+          end
+        false ->
+          default_type_ast
+      end
     quote do
-      @type t() :: unquote(type_struct)
+      @type t() :: unquote(type_ast)
     end
   end
   defp define_trivial_typespec_fields([], acc), do: Enum.reverse(acc)

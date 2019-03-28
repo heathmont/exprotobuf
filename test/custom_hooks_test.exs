@@ -72,6 +72,11 @@ defmodule Protobuf.CustomHooksTest do
         exp: exp
       }
     end
+    def post_decoded_type(%Schema.Msg.Decimal{}) do
+      quote do
+        Protobuf.CustomHooksTest.Decimal.t()
+      end
+    end
   end
 
   defimpl Protobuf.PostDecodable, for: Schema.Msg.UDecimal do
@@ -81,6 +86,11 @@ defmodule Protobuf.CustomHooksTest do
         coef: coef,
         exp: exp
       }
+    end
+    def post_decoded_type(%Schema.Msg.UDecimal{}) do
+      quote do
+        Protobuf.CustomHooksTest.Decimal.t()
+      end
     end
   end
 
