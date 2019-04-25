@@ -163,6 +163,9 @@ defmodule Protobuf.Utils do
 
             _ when is_scalar(val) or is_nil(val) ->
               walk(val, walker, msg_defs, original_field_module)
+
+            _ ->
+              val
           end
 
         Map.put(
@@ -203,6 +206,9 @@ defmodule Protobuf.Utils do
 
             _ when is_scalar(val) or is_nil(val) ->
               walk(val, walker, msg_defs, original_field_module)
+
+            _ ->
+              val
           end
 
         Map.put(
