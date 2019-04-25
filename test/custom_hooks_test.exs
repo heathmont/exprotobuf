@@ -36,6 +36,11 @@ defmodule Protobuf.CustomHooksTest.Schema do
       string node_name   = 2;
     }
   }
+
+  message ContainsPid {
+    string name = 1;
+    string pid  = 2;
+  }
   """
 end
 
@@ -44,6 +49,7 @@ defmodule Protobuf.CustomHooksTest do
   alias Protobuf.CustomHooksTest.Decimal
   alias Protobuf.CustomHooksTest.Schema
   alias Schema.Request.ErlangRpc
+  alias Schema.ContainsPid
   require Schema.Request.OneOf.Api, as: Api
 
   defimpl Protobuf.PreEncodable, for: Decimal do
@@ -202,5 +208,54 @@ defmodule Protobuf.CustomHooksTest do
     assert is_binary(encoded_request) and encoded_request != ""
     assert encoded_request == pre_encoded_request
     assert request == Schema.Request.decode(encoded_request)
+  end
+
+  defimpl Protobuf.PreEncodable, for: ContainsPid do
+    def pre_encode(%ContainsPid{pid: x} = message, _) do
+      %ContainsPid{message | pid: ensure_binary(x)}
+    end
+
+    defp ensure_binary(x) when is_pid(x) do
+      x
+      |> :erlang.pid_to_list()
+      |> :erlang.list_to_binary()
+    end
+
+    defp ensure_binary(x) when is_binary(x), do: x
+  end
+
+  defimpl Protobuf.PostDecodable, for: ContainsPid do
+    def post_decode(%ContainsPid{pid: x} = message) do
+      %ContainsPid{message | pid: ensure_pid(x)}
+    end
+
+    def post_decoded_type(%ContainsPid{}) do
+      quote location: :keep do
+        %Protobuf.CustomHooksTest.Schema.ContainsPid{
+          name: String.t(),
+          pid: pid()
+        }
+      end
+    end
+
+    defp ensure_pid(x) when is_binary(x) do
+      x
+      |> :erlang.binary_to_list()
+      |> :erlang.list_to_pid()
+    end
+
+    defp ensure_pid(x) when is_pid(x), do: x
+  end
+
+  test "encode-decode ContainsPid" do
+    message = %ContainsPid{
+      name: "hello",
+      pid: self()
+    }
+
+    encoded_message = ContainsPid.encode(message)
+
+    assert is_binary(encoded_message) and encoded_message != ""
+    assert message == ContainsPid.decode(encoded_message)
   end
 end
