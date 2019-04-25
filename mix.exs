@@ -4,7 +4,7 @@ defmodule Protobuf.Mixfile do
   def project do
     [
       app: :exprotobuf,
-      version: "1.2.24",
+      version: "1.2.25",
       elixir: "~> 1.7",
       elixirc_paths: elixirc_paths(Mix.env()),
       preferred_cli_env: [
