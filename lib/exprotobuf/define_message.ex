@@ -397,7 +397,15 @@ defmodule Protobuf.DefineMessage do
         end
       end
 
-      defp validate_non_repeated_field(val, %Field{occurrence: occurrence, type: type} = field, %ValidatorOpts{} = opts) do
+      defp validate_non_repeated_field(raw_val, %Field{occurrence: occurrence, type: type} = field, %ValidatorOpts{} = opts) do
+        val =
+          case field do
+            %Field{type: {:msg, msg_module}} ->
+              Protobuf.PreEncodable.pre_encode(raw_val, msg_module)
+            %Field{} ->
+              Protobuf.PreEncodable.pre_encode(raw_val, nil)
+          end
+
         fixed_opts =
           opts
           |> case do
@@ -531,7 +539,6 @@ defmodule Protobuf.DefineMessage do
       end
       defp validate_message_field(val, %Field{type: {:msg, msg_module}}, %ValidatorOpts{} = opts) do
         val
-        |> Protobuf.PreEncodable.pre_encode(msg_module)
         |> msg_module.do_validate(opts)
         |> case do
           :ok -> {:cont, :ok}
