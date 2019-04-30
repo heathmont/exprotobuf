@@ -4,17 +4,7 @@ defmodule Protobuf.Utils do
   alias Protobuf.MsgDef
   alias Protobuf.OneOfField
 
-  @standard_scalar_wrappers %{
-    "Google.Protobuf.DoubleValue" => true,
-    "Google.Protobuf.FloatValue" => true,
-    "Google.Protobuf.Int64Value" => true,
-    "Google.Protobuf.UInt64Value" => true,
-    "Google.Protobuf.Int32Value" => true,
-    "Google.Protobuf.UInt32Value" => true,
-    "Google.Protobuf.BoolValue" => true,
-    "Google.Protobuf.StringValue" => true,
-    "Google.Protobuf.BytesValue" => true
-  }
+  @standard_scalar_wrappers_regex ~r/Google\.Protobuf\.(DoubleValue|FloatValue|Int64Value|UInt64Value|Int32Value|UInt32Value|BoolValue|StringValue|BytesValue)$/
 
   @type msg_defs :: %{module => MsgDef.t()}
   @type walker :: (term, Field.t() | OneOfField.t() | nil, msg_defs, module | nil -> term)
@@ -28,13 +18,8 @@ defmodule Protobuf.Utils do
   end
 
   def is_standard_scalar_wrapper(module) when is_atom(module) do
-    mod =
-      module
-      |> Module.split()
-      |> Stream.take(-3)
-      |> Enum.join(".")
-
-    Map.has_key?(@standard_scalar_wrappers, mod)
+    @standard_scalar_wrappers_regex
+    |> Regex.match?(module |> Atom.to_string)
   end
 
   def is_enum_wrapper(module, enum_module) when is_atom(module) and is_atom(enum_module) do

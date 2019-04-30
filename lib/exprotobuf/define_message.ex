@@ -322,17 +322,23 @@ defmodule Protobuf.DefineMessage do
         end
       end
       defmacro validate(data, opts_data \\ []) do
+        msg_defs =
+          defs()
+          |> Utils.msg_defs()
+          |> Macro.escape
+
         opts = {
           :%,
           [],
           [
             {:__aliases__, [alias: false], [:Protobuf, :ValidatorOpts]},
-            {:%{}, [], opts_data}
+            {:%{}, [], [{:msg_defs, msg_defs} | opts_data]}
           ]
         }
+
         quote do
           unquote(data)
-          |> unquote(__MODULE__).do_validate(%ValidatorOpts{unquote(opts) | msg_defs: Utils.msg_defs(unquote(__MODULE__).defs)})
+          |> unquote(__MODULE__).do_validate(unquote(opts))
         end
       end
 
@@ -402,6 +408,8 @@ defmodule Protobuf.DefineMessage do
           case field do
             %Field{type: {:msg, msg_module}} ->
               Protobuf.PreEncodable.pre_encode(raw_val, msg_module)
+            %Field{} when Utils.is_scalar(raw_val) ->
+              raw_val
             %Field{} ->
               Protobuf.PreEncodable.pre_encode(raw_val, nil)
           end
