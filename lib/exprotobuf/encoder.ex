@@ -29,6 +29,9 @@ defmodule Protobuf.Encoder do
       |> Protobuf.PreEncodable.pre_encode(original_module)
       |> overflow_limit_walker(field_def)
       |> wrap_scalars_walker(field_def, msg_defs)
+    end)
+    |> Utils.walk(fn val, _, _, _ ->
+      val
       |> fix_undefined_walker
       |> convert_to_record_walker
     end)
@@ -59,7 +62,7 @@ defmodule Protobuf.Encoder do
   end
 
   def wrap_scalars_walker(val, %Field{} = field_def, %{} = msg_defs)
-       when Utils.is_scalar(val) do
+      when Utils.is_scalar(val) do
     field_def
     |> case do
       %Field{type: scalar} when is_atom(scalar) ->
