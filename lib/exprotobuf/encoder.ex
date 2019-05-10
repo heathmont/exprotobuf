@@ -25,6 +25,18 @@ defmodule Protobuf.Encoder do
 
     msg
     |> Utils.walk(fn val, field_def, %{} = msg_defs, original_module ->
+
+      if original_module in [LabFlask.Proto.Lab.Global.UserAgent, LabFlask.Proto.Lab.Global.UserAgent.Browser] do
+        IO.inspect val, label: :before
+        val
+        |> Protobuf.PreEncodable.pre_encode(original_module)
+        |> overflow_limit_walker(field_def)
+        |> wrap_scalars_walker(field_def, msg_defs)
+        |> fix_undefined_walker
+        |> convert_to_record_walker
+        |> IO.inspect(label: :after)
+      end
+
       val
       |> Protobuf.PreEncodable.pre_encode(original_module)
       |> overflow_limit_walker(field_def)

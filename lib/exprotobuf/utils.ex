@@ -149,6 +149,9 @@ defmodule Protobuf.Utils do
             _ when is_scalar(val) or is_nil(val) ->
               walk(val, walker, msg_defs, original_field_module)
 
+            {atom, val} when is_atom(atom) ->
+              {atom, walk(val, walker, msg_defs, original_field_module)}
+
             _ ->
               val
           end
@@ -191,6 +194,9 @@ defmodule Protobuf.Utils do
 
             _ when is_scalar(val) or is_nil(val) ->
               walk(val, walker, msg_defs, original_field_module)
+
+            {atom, val} when is_atom(atom) ->
+              {atom, walk(val, walker, msg_defs, original_field_module)}
 
             _ ->
               val
