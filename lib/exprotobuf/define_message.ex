@@ -562,7 +562,7 @@ defmodule Protobuf.DefineMessage do
         |> Enum.to_list
         |> validate_map_field(field, opts)
       end
-      defp validate_map_field([_ | _] = val, %Field{type: {:map, tk, tv}} = field, opts) do
+      defp validate_map_field(val, %Field{type: {:map, tk, tv}} = field, opts) when is_list(val) do
         field_key = %Protobuf.Field{
           fnum: 1,
           name: :key,
