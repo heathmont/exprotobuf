@@ -17,6 +17,8 @@ defmodule Protobuf.DefineMessage do
       |> Enum.flat_map(fn
         %OneOfField{} ->
           []
+        %Field{occurrence: :repeated} ->
+          []
         %Field{opts: [default: _]} ->
           []
         %Field{name: name, type: scalar} when is_atom(scalar) ->
