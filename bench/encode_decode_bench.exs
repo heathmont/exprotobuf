@@ -4,32 +4,25 @@ defmodule Exprotobuf.EncodeDecodeBench do
   alias Exprotobuf.Bench.Proto.Helper
 
   @msg0 Helper.msg(0)
-  @msg10 Helper.msg(10)
-  @msg50 Helper.msg(50)
-  @msg100 Helper.msg(100)
+  @msg2 Helper.msg(2)
+  @msg5 Helper.msg(5)
 
   @encoded_msg0 Helper.msg(0) |> Msg.encode()
-  @encoded_msg10 Helper.msg(10) |> Msg.encode()
-  @encoded_msg50 Helper.msg(50) |> Msg.encode()
-  @encoded_msg100 Helper.msg(100) |> Msg.encode()
+  @encoded_msg2 Helper.msg(2) |> Msg.encode()
+  @encoded_msg5 Helper.msg(5) |> Msg.encode()
 
   bench "encode 0" do
     @msg0
     |> Msg.encode()
   end
 
-  bench "encode 10" do
-    @msg10
+  bench "encode 2" do
+    @msg2
     |> Msg.encode()
   end
 
-  bench "encode 50" do
-    @msg50
-    |> Msg.encode()
-  end
-
-  bench "encode 100" do
-    @msg100
+  bench "encode 5" do
+    @msg5
     |> Msg.encode()
   end
 
@@ -38,18 +31,13 @@ defmodule Exprotobuf.EncodeDecodeBench do
     |> Msg.decode()
   end
 
-  bench "decode 10" do
-    @encoded_msg10
+  bench "decode 2" do
+    @encoded_msg2
     |> Msg.decode()
   end
 
-  bench "decode 50" do
-    @encoded_msg50
-    |> Msg.decode()
-  end
-
-  bench "decode 100" do
-    @encoded_msg100
+  bench "decode 5" do
+    @encoded_msg5
     |> Msg.decode()
   end
 end
