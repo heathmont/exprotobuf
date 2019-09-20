@@ -15,7 +15,9 @@ defmodule Protobuf.OverflowTest do
   require Protobuf.IntegerTypes, as: IntegerTypes
   alias Schema.Msg
 
-  [:int32, :int64, :uint32, :uint64]
+  @int_types [:int32, :int64, :uint32, :uint64]
+
+  @int_types
   |> Enum.each(fn type ->
     pattern = fn expression ->
       {
@@ -23,7 +25,7 @@ defmodule Protobuf.OverflowTest do
         [],
         [
           {:__aliases__, [alias: false], [:Protobuf, :OverflowTest, :Schema, :Msg]},
-          {:%{}, [], [{type, expression}]}
+          {:%{}, [], Enum.map(@int_types, &{&1, &1 == type && expression || 0})}
         ]
       }
     end

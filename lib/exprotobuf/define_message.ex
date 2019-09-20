@@ -12,11 +12,26 @@ defmodule Protobuf.DefineMessage do
 
   def def_message(name, fields, [inject: inject, doc: doc, syntax: syntax]) when is_list(fields) do
     struct_fields = record_fields(fields)
+    enforce_keys =
+      fields
+      |> Enum.flat_map(fn
+        %OneOfField{} ->
+          []
+        %Field{opts: [default: _]} ->
+          []
+        %Field{name: name, type: scalar} when is_atom(scalar) ->
+          [name]
+        %Field{name: name, type: {:enum, enum}} when is_atom(enum) ->
+          [name]
+        %Field{} ->
+          []
+      end)
     # Inject everything in 'using' module
     if inject do
       quote location: :keep do
         @root __MODULE__
         @record unquote(struct_fields)
+        @enforce_keys unquote(enforce_keys)
         defstruct @record
         fields = unquote(struct_fields)
 
@@ -48,6 +63,7 @@ defmodule Protobuf.DefineMessage do
           unquote(Protobuf.Config.doc_quote(doc))
           @root root
           @record unquote(struct_fields)
+          @enforce_keys unquote(enforce_keys)
           defstruct @record
 
           def record, do: @record
