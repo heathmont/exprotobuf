@@ -1,6 +1,18 @@
 defmodule ProtobufTest do
   use Protobuf.Case
 
+  test "allow empty enums" do
+    defmodule Empty do
+      use Protobuf, """
+      enum Void {
+
+      }
+      """
+    end
+
+    assert Empty.Void.values() == []
+  end
+
   test "can roundtrip encoding/decoding optional values in proto2" do
     defmodule RoundtripProto2 do
       use Protobuf, """
@@ -57,6 +69,7 @@ defmodule ProtobufTest do
       }
       """
     end
+
     old = BasicProto.Msg.new(f1: 1)
 
     defmodule BasicProto do
@@ -67,6 +80,7 @@ defmodule ProtobufTest do
       }
       """
     end
+
     encoded = BasicProto.Msg.encode(old)
     decoded = BasicProto.Msg.decode(encoded)
 
@@ -82,6 +96,7 @@ defmodule ProtobufTest do
       }
       """
     end
+
     old = BasicProto.Msg.new(f1: 1)
     encoded = BasicProto.Msg.encode(old)
 
@@ -93,6 +108,7 @@ defmodule ProtobufTest do
       }
       """
     end
+
     decoded = BasicProto.Msg.decode(encoded)
 
     assert 1 = decoded.f1
@@ -102,15 +118,16 @@ defmodule ProtobufTest do
   test "define records in namespace" do
     defmodule NamespacedRecordsProto do
       use Protobuf, """
-         message Msg1 {
-           required uint32 f1 = 1;
-         }
+       message Msg1 {
+         required uint32 f1 = 1;
+       }
 
-         message Msg2 {
-           required string f1 = 1;
-         }
-        """
+       message Msg2 {
+         required string f1 = 1;
+       }
+      """
     end
+
     msg1 = NamespacedRecordsProto.Msg1
     msg2 = NamespacedRecordsProto.Msg2
 
@@ -119,13 +136,14 @@ defmodule ProtobufTest do
   end
 
   test "define records in namespace with injection" do
-    contents = quote do
-      use Protobuf, ["
+    contents =
+      quote do
+        use Protobuf, ["
        message InjectionTest {
            required uint32 f1 = 1;
        }
       ", inject: true]
-    end
+      end
 
     {:module, mod, _, _} = Module.create(InjectionTest, contents, Macro.Env.location(__ENV__))
 
@@ -136,6 +154,7 @@ defmodule ProtobufTest do
     defmodule DefaultValueForOptionalsProto do
       use Protobuf, "message Msg { optional uint32 f1 = 1; }"
     end
+
     msg = DefaultValueForOptionalsProto.Msg.new()
     assert nil == msg.f1
   end
@@ -144,6 +163,7 @@ defmodule ProtobufTest do
     defmodule DefaultValueForListsProto do
       use Protobuf, "message Msg { repeated uint32 f1 = 1; }"
     end
+
     msg = DefaultValueForListsProto.Msg.new()
     assert [] == msg.f1
   end
@@ -152,6 +172,7 @@ defmodule ProtobufTest do
     defmodule DefaultValueExplicitProto do
       use Protobuf, "message Msg { optional uint32 f1 = 1 [default = 42]; }"
     end
+
     msg = DefaultValueExplicitProto.Msg.new()
     assert 42 == msg.f1
   end
@@ -167,14 +188,14 @@ defmodule ProtobufTest do
   test "define a record in subnamespace" do
     defmodule SubnamespacedRecordProto do
       use Protobuf, """
-        message Msg {
-          message SubMsg {
-            required uint32 f1 = 1;
-          }
-
-          required SubMsg f1 = 1;
+      message Msg {
+        message SubMsg {
+          required uint32 f1 = 1;
         }
-        """
+
+        required SubMsg f1 = 1;
+      }
+      """
     end
 
     msg = SubnamespacedRecordProto.Msg.SubMsg.new(f1: 1)
@@ -188,19 +209,19 @@ defmodule ProtobufTest do
   test "define enum information module" do
     defmodule EnumInfoModProto do
       use Protobuf, """
-        enum Version {
-          V0_1 = 1;
-          V0_2 = 2;
+      enum Version {
+        V0_1 = 1;
+        V0_2 = 2;
+      }
+      message Msg {
+        enum MsgType {
+          START = 1;
+          STOP  = 2;
         }
-        message Msg {
-          enum MsgType {
-            START = 1;
-            STOP  = 2;
-          }
-          required MsgType type = 1;
-          required Version version = 2;
-        }
-        """
+        required MsgType type = 1;
+        required Version version = 2;
+      }
+      """
     end
 
     assert {:file, []} == :code.is_loaded(EnumInfoModProto.Version)
@@ -209,17 +230,17 @@ defmodule ProtobufTest do
     assert 1 == EnumInfoModProto.Version.value(:V0_1)
     assert 1 == EnumInfoModProto.Msg.MsgType.value(:START)
 
-    assert :V0_2  == EnumInfoModProto.Version.atom(2)
+    assert :V0_2 == EnumInfoModProto.Version.atom(2)
     assert :STOP == EnumInfoModProto.Msg.MsgType.atom(2)
 
     assert nil == EnumInfoModProto.Version.atom(-1)
     assert nil == EnumInfoModProto.Msg.MsgType.value(:OTHER)
 
-    assert [:V0_1, :V0_2] == EnumInfoModProto.Version.atoms
-    assert [:START, :STOP] == EnumInfoModProto.Msg.MsgType.atoms
+    assert [:V0_1, :V0_2] == EnumInfoModProto.Version.atoms()
+    assert [:START, :STOP] == EnumInfoModProto.Msg.MsgType.atoms()
 
-    assert [1, 2] == EnumInfoModProto.Version.values
-    assert [1, 2] == EnumInfoModProto.Msg.MsgType.values
+    assert [1, 2] == EnumInfoModProto.Version.values()
+    assert [1, 2] == EnumInfoModProto.Msg.MsgType.values()
   end
 
   test "support define from a file" do
@@ -236,16 +257,39 @@ defmodule ProtobufTest do
     defmodule ProtoDefsProto do
       use Protobuf, "message Msg { optional uint32 f1 = 1; }"
     end
-    defs = [{{:msg, ProtoDefsProto.Msg}, [%Protobuf.Field{name: :f1, fnum: 1, rnum: 2, type: :uint32, occurrence: :optional, opts: []}]}]
-    assert defs == ProtoDefsProto.defs
-    assert defs == ProtoDefsProto.Msg.defs
+
+    defs = [
+      {{:msg, ProtoDefsProto.Msg},
+       [
+         %Protobuf.Field{
+           name: :f1,
+           fnum: 1,
+           rnum: 2,
+           type: :uint32,
+           occurrence: :optional,
+           opts: []
+         }
+       ]}
+    ]
+
+    assert defs == ProtoDefsProto.defs()
+    assert defs == ProtoDefsProto.Msg.defs()
   end
 
   test "defined a method defs to get field info" do
     defmodule FieldDefsProto do
       use Protobuf, "message Msg { optional uint32 f1 = 1; }"
     end
-    deff = %Protobuf.Field{name: :f1, fnum: 1, rnum: 2, type: :uint32, occurrence: :optional, opts: []}
+
+    deff = %Protobuf.Field{
+      name: :f1,
+      fnum: 1,
+      rnum: 2,
+      type: :uint32,
+      occurrence: :optional,
+      opts: []
+    }
+
     assert deff == FieldDefsProto.Msg.defs(:field, 1)
     assert deff == FieldDefsProto.Msg.defs(:field, :f1)
   end
@@ -254,6 +298,7 @@ defmodule ProtobufTest do
     defmodule DecodeMethodProto do
       use Protobuf, "message Msg { optional uint32 f1 = 1; }"
     end
+
     module = DecodeMethodProto.Msg
     assert %{:__struct__ => ^module} = DecodeMethodProto.Msg.decode(<<>>)
   end
@@ -261,14 +306,15 @@ defmodule ProtobufTest do
   test "extensions skip" do
     defmodule SkipExtensions do
       use Protobuf, """
-        message Msg {
-          required uint32 f1 = 1;
-          extensions 100 to 200;
-        }
-        """
+      message Msg {
+        required uint32 f1 = 1;
+        extensions 100 to 200;
+      }
+      """
     end
+
     module = SkipExtensions.Msg
-    assert %{:__struct__ => ^module} = SkipExtensions.Msg.new
+    assert %{:__struct__ => ^module} = SkipExtensions.Msg.new()
   end
 
   test "additional method via use_in" do
@@ -287,7 +333,7 @@ defmodule ProtobufTest do
         end
       end
 
-      use_in :Msg, MsgHelper
+      use_in(:Msg, MsgHelper)
     end
 
     msg = AddViaHelper.Msg.new(f1: 10)
@@ -297,20 +343,20 @@ defmodule ProtobufTest do
   test "normalize unconventional (lowercase) styles of named messages and enums" do
     defmodule UnconventionalMessagesProto do
       use Protobuf, """
-        message msgPackage {
-          enum msgResponseType {
-            NACK = 0;
-            ACK = 1;
-          }
-
-          message msgHeader {
-            required uint32 message_id = 0;
-            required msgResponseType response_type = 1;
-          }
-
-          required msgHeader header = 1;
+      message msgPackage {
+        enum msgResponseType {
+          NACK = 0;
+          ACK = 1;
         }
-        """
+
+        message msgHeader {
+          required uint32 message_id = 0;
+          required msgResponseType response_type = 1;
+        }
+
+        required msgHeader header = 1;
+      }
+      """
     end
 
     assert 0 == UnconventionalMessagesProto.MsgPackage.MsgResponseType.value(:NACK)
@@ -321,14 +367,20 @@ defmodule ProtobufTest do
 
     msg_header = UnconventionalMessagesProto.MsgPackage.MsgHeader
 
-    assert %{:__struct__    => ^msg_header,
-             :response_type => :ACK,
-             :message_id    => 25 } = UnconventionalMessagesProto.MsgPackage.MsgHeader.new(response_type: :ACK, message_id: 25)
+    assert %{:__struct__ => ^msg_header, :response_type => :ACK, :message_id => 25} =
+             UnconventionalMessagesProto.MsgPackage.MsgHeader.new(
+               response_type: :ACK,
+               message_id: 25
+             )
 
     msg_package = UnconventionalMessagesProto.MsgPackage
-    nack_msg_header = UnconventionalMessagesProto.MsgPackage.MsgHeader.new(message_id: 1, response_type: :NACK)
-    #nack_msg_package = UnconventionalMessagesProto.MsgPackage.new(header: nack_msg_header)
 
-    assert %{:__struct__ => ^msg_package, :header => ^nack_msg_header} = UnconventionalMessagesProto.MsgPackage.new(header: nack_msg_header)
+    nack_msg_header =
+      UnconventionalMessagesProto.MsgPackage.MsgHeader.new(message_id: 1, response_type: :NACK)
+
+    # nack_msg_package = UnconventionalMessagesProto.MsgPackage.new(header: nack_msg_header)
+
+    assert %{:__struct__ => ^msg_package, :header => ^nack_msg_header} =
+             UnconventionalMessagesProto.MsgPackage.new(header: nack_msg_header)
   end
 end

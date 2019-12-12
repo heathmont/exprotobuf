@@ -8,4 +8,32 @@ message Msg {
       string world = 2;
       Msg msg = 3;
   }
+  oneof either1 {
+      string world = 4;
+      Msg msg = 5;
+  }
+  oneof either2 {
+      string world = 6;
+      Msg msg = 7;
+  }
+  oneof either3 {
+      string world = 8;
+      Msg msg = 9;
+  }
+  oneof either4 {
+      string world = 10;
+      Msg msg = 11;
+  }
+  oneof either5 {
+      string world = 12;
+      Msg msg = 13;
+  }
+  oneof either6 {
+      string world = 14;
+      Msg msg = 15;
+  }
+  oneof either7 {
+      string world = 16;
+      Msg msg = 17;
+  }
 }
