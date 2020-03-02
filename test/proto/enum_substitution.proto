@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+message Hello {
+  enum Hello {
+    FOO = 0;
+    BAR = 1;
+  }
+}
+
+message World {
+  enum World {
+    FOO = 0;
+    BAR = 1;
+  }
+}
+
+message MsgHello {
+  int64 int64       = 1;
+  Hello.Hello hello = 2;
+  string string     = 3;
+}
+
+message MsgWorld {
+  int64 int64       = 1;
+  World.World world = 2;
+  string string     = 3;
+}
