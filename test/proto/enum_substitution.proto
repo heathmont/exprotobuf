@@ -14,14 +14,39 @@ message World {
   }
 }
 
-message MsgHello {
+message MsgH0 {
+  int64 int64       = 2;
+  Hello.Hello hello = 1;
+  string string     = 3;
+}
+
+message MsgW0 {
+  int64 int64       = 2;
+  World.World world = 1;
+  string string     = 3;
+}
+
+
+message MsgH1 {
   int64 int64       = 1;
   Hello.Hello hello = 2;
   string string     = 3;
 }
 
-message MsgWorld {
+message MsgW1 {
   int64 int64       = 1;
   World.World world = 2;
   string string     = 3;
+}
+
+message MsgH2 {
+  int64 int64       = 1;
+  Hello.Hello hello = 3;
+  string string     = 2;
+}
+
+message MsgW2 {
+  int64 int64       = 1;
+  World.World world = 3;
+  string string     = 2;
 }
